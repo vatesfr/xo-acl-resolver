@@ -1,5 +1,6 @@
 // These global variables are not a problem because the algorithm is
 // synchronous.
+let cache
 let permissionsByObject
 let getObject
 
@@ -90,6 +91,14 @@ const checkAuthorizationByTypes = {
 
 // Hoisting is important for this function.
 function checkAuthorization (objectId, permission) {
+  const authorized = cache[objectId]
+  if (authorized != null) {
+    return authorized
+  }
+
+  // set it to false in case an error occurs after.
+  cache[objectId] = false
+
   const object = getObject(objectId)
   if (!object) {
     return false
@@ -97,7 +106,7 @@ function checkAuthorization (objectId, permission) {
 
   const checker = checkAuthorizationByTypes[object.type] || checkSelf
 
-  return checker(object, permission)
+  return (cache[objectId] = checker(object, permission))
 }
 
 // -------------------------------------------------------------------
@@ -106,11 +115,13 @@ export default (
   permissionsByObject_,
   getObject_,
   permissions,
-  permission
+  permission,
+  cache_
 ) => {
   // Assign global variables.
-  permissionsByObject = permissionsByObject_
+  cache = cache_ || {}
   getObject = getObject_
+  permissionsByObject = permissionsByObject_
 
   try {
     if (permission) {
@@ -126,6 +137,6 @@ export default (
     return true
   } finally {
     // Free the global variables.
-    permissionsByObject = getObject = null
+    cache = permissionsByObject = getObject = null
   }
 }
